@@ -17,32 +17,33 @@
 #include "device_launch_parameters.h"
 #define GLM_FORCE_CUDA
 #include <glm/glm.hpp>
+#include "auxiliary.h"
 
 namespace FORWARD
 {
 	// Perform initial steps for each Gaussian prior to rasterization.
 	void preprocess(int P, int D, int M,
-		const float* orig_points,
-		const glm::vec3* scales,
+		const __half* orig_points,
+		const __half3* scales,
 		const float scale_modifier,
-		const glm::vec4* rotations,
-		const float* opacities,
-		const float* shs,
+		const __half4* rotations,
+		const __half* opacities,
+		const __half* shs,
 		bool* clamped,
-		const float* cov3D_precomp,
-		const float* colors_precomp,
-		const float* viewmatrix,
-		const float* projmatrix,
-		const glm::vec3* cam_pos,
+		const __half* cov3D_precomp,
+		const __half* colors_precomp,
+		const __half* viewmatrix,
+		const __half* projmatrix,
+		const __half3* cam_pos,
 		const int W, int H,
 		const float focal_x, float focal_y,
 		const float tan_fovx, float tan_fovy,
 		int* radii,
-		float2* points_xy_image,
-		float* depths,
-		float* cov3Ds,
-		float* colors,
-		float4* conic_opacity,
+		__half2* points_xy_image,
+		__half* depths,
+		__half* cov3Ds,
+		__half* colors,
+		__half4* conic_opacity,
 		const dim3 grid,
 		uint32_t* tiles_touched,
 		bool prefiltered);
@@ -53,13 +54,13 @@ namespace FORWARD
 		const uint2* ranges,
 		const uint32_t* point_list,
 		int W, int H,
-		const float2* points_xy_image,
-		const float* features,
-		const float4* conic_opacity,
-		float* final_T,
+		const __half2* points_xy_image,
+		const __half* features,
+		const __half4* conic_opacity,
+		__half* final_T,
 		uint32_t* n_contrib,
-		const float* bg_color,
-		float* out_color);
+		const __half* bg_color,
+		__half* out_color);
 }
 
 

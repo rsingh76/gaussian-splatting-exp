@@ -13,50 +13,68 @@
 #include "auxiliary.h"
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
+#include <iostream>
 namespace cg = cooperative_groups;
 
 // Forward method for converting the input spherical harmonics
 // coefficients of each Gaussian to a simple RGB color.
-__device__ glm::vec3 computeColorFromSH(int idx, int deg, int max_coeffs, const glm::vec3* means, glm::vec3 campos, const float* shs, bool* clamped)
+__device__ glm::vec3 computeColorFromSH(int idx, int deg, int max_coeffs, const glm::vec3 means, glm::vec3 campos, const __half* shs, bool* clamped)
 {
 	// The implementation is loosely based on code for 
 	// "Differentiable Point-Based Radiance Fields for 
 	// Efficient View Synthesis" by Zhang et al. (2022)
-	glm::vec3 pos = means[idx];
+	glm::vec3 pos = means;
 	glm::vec3 dir = pos - campos;
 	dir = dir / glm::length(dir);
+	int idx3 = idx * 3*max_coeffs;
+	glm::vec3 sh_0 = { __half2float(shs[idx3]), __half2float(shs[idx3 + 1]),	__half2float(shs[idx3 + 2]) };
+	glm::vec3 sh_1 = { __half2float(shs[idx3+3]), __half2float(shs[idx3+3 + 1]), __half2float(shs[idx3+3 + 2]) };
+	glm::vec3 sh_2 = { __half2float(shs[idx3+6]), __half2float(shs[idx3+6 + 1]), __half2float(shs[idx3+6 + 2]) };
+	glm::vec3 sh_3 = { __half2float(shs[idx3+9]), __half2float(shs[idx3+9 + 1]), __half2float(shs[idx3+9 + 2]) };
+	glm::vec3 sh_4 = { __half2float(shs[idx3+12]), __half2float(shs[idx3+12 + 1]), __half2float(shs[idx3+12 + 2]) };
+	glm::vec3 sh_5 = { __half2float(shs[idx3+15]), __half2float(shs[idx3+15 + 1]), __half2float(shs[idx3+15 + 2]) };
+	glm::vec3 sh_6 = { __half2float(shs[idx3+18]), __half2float(shs[idx3+18 + 1]), __half2float(shs[idx3+18 + 2]) };
+	glm::vec3 sh_7 = { __half2float(shs[idx3+21]), __half2float(shs[idx3+21 + 1]), __half2float(shs[idx3+21 + 2]) };
+	glm::vec3 sh_8 = { __half2float(shs[idx3+24]), __half2float(shs[idx3+24 + 1]), __half2float(shs[idx3+24 + 2]) };
+	glm::vec3 sh_9 = { __half2float(shs[idx3+27]), __half2float(shs[idx3+27 + 1]), __half2float(shs[idx3+27 + 2]) };
+	glm::vec3 sh_10 = { __half2float(shs[idx3+30]), __half2float(shs[idx3+30 + 1]), __half2float(shs[idx3+30 + 2]) };
+	glm::vec3 sh_11 = { __half2float(shs[idx3+33]), __half2float(shs[idx3+33 + 1]), __half2float(shs[idx3+33 + 2]) };
+	glm::vec3 sh_12 = { __half2float(shs[idx3+36]), __half2float(shs[idx3+36 + 1]), __half2float(shs[idx3+36 + 2]) };
+	glm::vec3 sh_13 = { __half2float(shs[idx3+39]), __half2float(shs[idx3+39 + 1]), __half2float(shs[idx3+39 + 2]) };
+	glm::vec3 sh_14 = { __half2float(shs[idx3+42]), __half2float(shs[idx3+42 + 1]), __half2float(shs[idx3+42 + 2]) };
+	glm::vec3 sh_15 = { __half2float(shs[idx3+45]), __half2float(shs[idx3+45 + 1]), __half2float(shs[idx3+45 + 2]) };
 
-	glm::vec3* sh = ((glm::vec3*)shs) + idx * max_coeffs;
-	glm::vec3 result = SH_C0 * sh[0];
+	// glm::vec3* sh = ((glm::vec3*)shs) + idx * max_coeffs;
+	glm::vec3 result = SH_C0 * sh_0;
 
 	if (deg > 0)
 	{
 		float x = dir.x;
 		float y = dir.y;
 		float z = dir.z;
-		result = result - SH_C1 * y * sh[1] + SH_C1 * z * sh[2] - SH_C1 * x * sh[3];
+		result = result - SH_C1 * y * sh_1 + SH_C1 * z * sh_2 - SH_C1 * x * sh_3;
 
 		if (deg > 1)
 		{
 			float xx = x * x, yy = y * y, zz = z * z;
 			float xy = x * y, yz = y * z, xz = x * z;
 			result = result +
-				SH_C2[0] * xy * sh[4] +
-				SH_C2[1] * yz * sh[5] +
-				SH_C2[2] * (2.0f * zz - xx - yy) * sh[6] +
-				SH_C2[3] * xz * sh[7] +
-				SH_C2[4] * (xx - yy) * sh[8];
+				SH_C2[0] * xy * sh_4 +
+				SH_C2[1] * yz * sh_5 +
+				SH_C2[2] * (2.0f * zz - xx - yy) * sh_6 +
+				SH_C2[3] * xz * sh_7 +
+				SH_C2[4] * (xx - yy) * sh_8;
 
 			if (deg > 2)
 			{
 				result = result +
-					SH_C3[0] * y * (3.0f * xx - yy) * sh[9] +
-					SH_C3[1] * xy * z * sh[10] +
-					SH_C3[2] * y * (4.0f * zz - xx - yy) * sh[11] +
-					SH_C3[3] * z * (2.0f * zz - 3.0f * xx - 3.0f * yy) * sh[12] +
-					SH_C3[4] * x * (4.0f * zz - xx - yy) * sh[13] +
-					SH_C3[5] * z * (xx - yy) * sh[14] +
-					SH_C3[6] * x * (xx - 3.0f * yy) * sh[15];
+					SH_C3[0] * y * (3.0f * xx - yy) * sh_9 +
+					SH_C3[1] * xy * z * sh_10 +
+					SH_C3[2] * y * (4.0f * zz - xx - yy) * sh_11 +
+					SH_C3[3] * z * (2.0f * zz - 3.0f * xx - 3.0f * yy) * sh_12 +
+					SH_C3[4] * x * (4.0f * zz - xx - yy) * sh_13 +
+					SH_C3[5] * z * (xx - yy) * sh_14 +
+					SH_C3[6] * x * (xx - 3.0f * yy) * sh_15;
 			}
 		}
 	}
@@ -71,7 +89,7 @@ __device__ glm::vec3 computeColorFromSH(int idx, int deg, int max_coeffs, const 
 }
 
 // Forward version of 2D covariance matrix computation
-__device__ float3 computeCov2D(const float3& mean, float focal_x, float focal_y, float tan_fovx, float tan_fovy, const float* cov3D, const float* viewmatrix)
+__device__ __half3 computeCov2D(const __half3& mean, float focal_x, float focal_y, float tan_fovx, float tan_fovy, const __half* cov3D, const __half* viewmatrix)
 {
 	// The following models the steps outlined by equations 29
 	// and 31 in "EWA Splatting" (Zwicker et al., 2002). 
@@ -92,16 +110,16 @@ __device__ float3 computeCov2D(const float3& mean, float focal_x, float focal_y,
 		0, 0, 0);
 
 	glm::mat3 W = glm::mat3(
-		viewmatrix[0], viewmatrix[4], viewmatrix[8],
-		viewmatrix[1], viewmatrix[5], viewmatrix[9],
-		viewmatrix[2], viewmatrix[6], viewmatrix[10]);
+		__half2float(viewmatrix[0]), __half2float(viewmatrix[4]), __half2float(viewmatrix[8]),
+		__half2float(viewmatrix[1]), __half2float(viewmatrix[5]), __half2float(viewmatrix[9]),
+		__half2float(viewmatrix[2]), __half2float(viewmatrix[6]), __half2float(viewmatrix[10]));
 
 	glm::mat3 T = W * J;
 
 	glm::mat3 Vrk = glm::mat3(
-		cov3D[0], cov3D[1], cov3D[2],
-		cov3D[1], cov3D[3], cov3D[4],
-		cov3D[2], cov3D[4], cov3D[5]);
+		__half2float(cov3D[0]), __half2float(cov3D[1]), __half2float(cov3D[2]),
+		__half2float(cov3D[1]), __half2float(cov3D[3]), __half2float(cov3D[4]),
+		__half2float(cov3D[2]), __half2float(cov3D[4]), __half2float(cov3D[5]));
 
 	glm::mat3 cov = glm::transpose(T) * glm::transpose(Vrk) * T;
 
@@ -109,13 +127,13 @@ __device__ float3 computeCov2D(const float3& mean, float focal_x, float focal_y,
 	// one pixel wide/high. Discard 3rd row and column.
 	cov[0][0] += 0.3f;
 	cov[1][1] += 0.3f;
-	return { float(cov[0][0]), float(cov[0][1]), float(cov[1][1]) };
+	return { __float2half(cov[0][0]), __float2half(cov[0][1]), __float2half(cov[1][1]) };
 }
 
 // Forward method for converting scale and rotation properties of each
 // Gaussian to a 3D covariance matrix in world space. Also takes care
 // of quaternion normalization.
-__device__ void computeCov3D(const glm::vec3 scale, float mod, const glm::vec4 rot, float* cov3D)
+__device__ void computeCov3D(const glm::vec3 scale, float mod, const glm::vec4 rot, __half* cov3D)
 {
 	// Create scaling matrix
 	glm::mat3 S = glm::mat3(1.0f);
@@ -143,38 +161,38 @@ __device__ void computeCov3D(const glm::vec3 scale, float mod, const glm::vec4 r
 	glm::mat3 Sigma = glm::transpose(M) * M;
 
 	// Covariance is symmetric, only store upper right
-	cov3D[0] = Sigma[0][0];
-	cov3D[1] = Sigma[0][1];
-	cov3D[2] = Sigma[0][2];
-	cov3D[3] = Sigma[1][1];
-	cov3D[4] = Sigma[1][2];
-	cov3D[5] = Sigma[2][2];
+	cov3D[0] = __float2half(Sigma[0][0]);
+	cov3D[1] = __float2half(Sigma[0][1]);
+	cov3D[2] = __float2half(Sigma[0][2]);
+	cov3D[3] = __float2half(Sigma[1][1]);
+	cov3D[4] = __float2half(Sigma[1][2]);
+	cov3D[5] = __float2half(Sigma[2][2]);
 }
 
 // Perform initial steps for each Gaussian prior to rasterization.
 template<int C>
 __global__ void preprocessCUDA(int P, int D, int M,
-	const float* orig_points,
-	const glm::vec3* scales,
+	const __half* orig_points,
+	const __half3* scales,
 	const float scale_modifier,
-	const glm::vec4* rotations,
-	const float* opacities,
-	const float* shs,
+	const __half4* rotations,
+	const __half* opacities,
+	const __half* shs,
 	bool* clamped,
-	const float* cov3D_precomp,
-	const float* colors_precomp,
-	const float* viewmatrix,
-	const float* projmatrix,
-	const glm::vec3* cam_pos,
+	const __half* cov3D_precomp,
+	const __half* colors_precomp,
+	const __half* viewmatrix,
+	const __half* projmatrix,
+	const __half3* cam_pos,
 	const int W, int H,
 	const float tan_fovx, float tan_fovy,
 	const float focal_x, float focal_y,
 	int* radii,
-	float2* points_xy_image,
-	float* depths,
-	float* cov3Ds,
-	float* rgb,
-	float4* conic_opacity,
+	__half2* points_xy_image,
+	__half* depths,
+	__half* cov3Ds,
+	__half* rgb,
+	__half4* conic_opacity,
 	const dim3 grid,
 	uint32_t* tiles_touched,
 	bool prefiltered)
@@ -194,26 +212,29 @@ __global__ void preprocessCUDA(int P, int D, int M,
 		return;
 
 	// Transform point by projecting
-	float3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
+	__half3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
 	float4 p_hom = transformPoint4x4(p_orig, projmatrix);
 	float p_w = 1.0f / (p_hom.w + 0.0000001f);
 	float3 p_proj = { p_hom.x * p_w, p_hom.y * p_w, p_hom.z * p_w };
 
 	// If 3D covariance matrix is precomputed, use it, otherwise compute
 	// from scaling and rotation parameters. 
-	const float* cov3D;
+	const __half* cov3D;
 	if (cov3D_precomp != nullptr)
 	{
 		cov3D = cov3D_precomp + idx * 6;
 	}
 	else
 	{
-		computeCov3D(scales[idx], scale_modifier, rotations[idx], cov3Ds + idx * 6);
+		glm::vec3 scale = { __half2float(scales[idx].x), __half2float(scales[idx].y), __half2float(scales[idx].z) };
+		glm::vec4 rotation = { __half2float(rotations[idx].x), __half2float(rotations[idx].y), __half2float(rotations[idx].z), __half2float(rotations[idx].w) };
+		computeCov3D(scale, scale_modifier, rotation, cov3Ds + idx * 6);
 		cov3D = cov3Ds + idx * 6;
 	}
 
 	// Compute 2D screen-space covariance matrix
-	float3 cov = computeCov2D(p_orig, focal_x, focal_y, tan_fovx, tan_fovy, cov3D, viewmatrix);
+	__half3 cov_half = computeCov2D(p_orig, focal_x,focal_y, tan_fovx, tan_fovy, cov3D, viewmatrix);
+	float3 cov = cov_half.convert();
 
 	// Invert covariance (EWA algorithm)
 	float det = (cov.x * cov.z - cov.y * cov.y);
@@ -240,18 +261,25 @@ __global__ void preprocessCUDA(int P, int D, int M,
 	// spherical harmonics coefficients to RGB color.
 	if (colors_precomp == nullptr)
 	{
-		glm::vec3 result = computeColorFromSH(idx, D, M, (glm::vec3*)orig_points, *cam_pos, shs, clamped);
-		rgb[idx * C + 0] = result.x;
-		rgb[idx * C + 1] = result.y;
-		rgb[idx * C + 2] = result.z;
+		// create an indexing that deivides orig_points into clusters of 3
+		int idx3 = idx * 3;
+		// create a float point array from orig_points with 3 elements starting with idx3 without using glm
+		glm::vec3 p_orig_vec3 = { __half2float(orig_points[idx3]), __half2float(orig_points[idx3 + 1]), __half2float(orig_points[idx3 + 2]) };
+	
+		glm::vec3 campos_vec = { __half2float(cam_pos->x), __half2float(cam_pos->y), __half2float(cam_pos->z)};
+		glm::vec3 result = computeColorFromSH(idx, D, M, p_orig_vec3, campos_vec, shs, clamped);
+		rgb[idx * C + 0] = __float2half(result.x);
+		rgb[idx * C + 1] = __float2half(result.y);
+		rgb[idx * C + 2] = __float2half(result.z);
 	}
 
 	// Store some useful helper data for the next steps.
-	depths[idx] = p_view.z;
+	depths[idx] = __float2half(p_view.z);
 	radii[idx] = my_radius;
-	points_xy_image[idx] = point_image;
+	points_xy_image[idx] = __float22half2(point_image);
 	// Inverse 2D covariance and opacity neatly pack into one float4
-	conic_opacity[idx] = { conic.x, conic.y, conic.z, opacities[idx] };
+	__half3 conic_half = __float32half3(conic);
+	conic_opacity[idx] = { conic_half.x, conic_half.y, conic_half.z, opacities[idx] };
 	tiles_touched[idx] = (rect_max.y - rect_min.y) * (rect_max.x - rect_min.x);
 }
 
@@ -264,13 +292,13 @@ renderCUDA(
 	const uint2* __restrict__ ranges,
 	const uint32_t* __restrict__ point_list,
 	int W, int H,
-	const float2* __restrict__ points_xy_image,
-	const float* __restrict__ features,
-	const float4* __restrict__ conic_opacity,
-	float* __restrict__ final_T,
+	const __half2* __restrict__ points_xy_image,
+	const __half* __restrict__ features,
+	const __half4* __restrict__ conic_opacity,
+	__half* __restrict__ final_T,
 	uint32_t* __restrict__ n_contrib,
-	const float* __restrict__ bg_color,
-	float* __restrict__ out_color)
+	const __half* __restrict__ bg_color,
+	__half* __restrict__ out_color)
 {
 	// Identify current tile and associated min/max pixel range.
 	auto block = cg::this_thread_block();
@@ -279,7 +307,7 @@ renderCUDA(
 	uint2 pix_max = { min(pix_min.x + BLOCK_X, W), min(pix_min.y + BLOCK_Y , H) };
 	uint2 pix = { pix_min.x + block.thread_index().x, pix_min.y + block.thread_index().y };
 	uint32_t pix_id = W * pix.y + pix.x;
-	float2 pixf = { (float)pix.x, (float)pix.y };
+	__half2 pixf = { __float2half((float)pix.x), __float2half((float)pix.y) };
 
 	// Check if this thread is associated with a valid pixel or outside.
 	bool inside = pix.x < W&& pix.y < H;
@@ -293,14 +321,14 @@ renderCUDA(
 
 	// Allocate storage for batches of collectively fetched data.
 	__shared__ int collected_id[BLOCK_SIZE];
-	__shared__ float2 collected_xy[BLOCK_SIZE];
-	__shared__ float4 collected_conic_opacity[BLOCK_SIZE];
+	__shared__ __half2 collected_xy[BLOCK_SIZE];
+	__shared__ __half4 collected_conic_opacity[BLOCK_SIZE];
 
 	// Initialize helper variables
-	float T = 1.0f;
+	__half T = __float2half(1.0f);
 	uint32_t contributor = 0;
 	uint32_t last_contributor = 0;
-	float C[CHANNELS] = { 0 };
+	__half C[CHANNELS] = { __int2half_rn(0) };
 
 	// Iterate over batches until all done or range is complete
 	for (int i = 0; i < rounds; i++, toDo -= BLOCK_SIZE)
@@ -329,22 +357,22 @@ renderCUDA(
 
 			// Resample using conic matrix (cf. "Surface 
 			// Splatting" by Zwicker et al., 2001)
-			float2 xy = collected_xy[j];
-			float2 d = { xy.x - pixf.x, xy.y - pixf.y };
-			float4 con_o = collected_conic_opacity[j];
-			float power = -0.5f * (con_o.x * d.x * d.x + con_o.z * d.y * d.y) - con_o.y * d.x * d.y;
-			if (power > 0.0f)
+			__half2 xy = collected_xy[j];
+			__half2 d = {__hsub(xy.x , pixf.x), __hsub(xy.y , pixf.y) };
+			__half4 con_o = collected_conic_opacity[j];
+			__half power = __hsub(__hmul(__float2half(-0.5f) , __hadd(__hmul(con_o.x , __hmul(d.x , d.x)) , __hmul(con_o.z , __hmul(d.y , d.y)))) , __hmul(con_o.y , __hmul(d.x , d.y)));
+			if (__hgt(power , __float2half(0.0f)))
 				continue;
 
 			// Eq. (2) from 3D Gaussian splatting paper.
 			// Obtain alpha by multiplying with Gaussian opacity
 			// and its exponential falloff from mean.
 			// Avoid numerical instabilities (see paper appendix). 
-			float alpha = min(0.99f, con_o.w * exp(power));
-			if (alpha < 1.0f / 255.0f)
+			__half alpha = __hmin(__float2half(0.99f), __hmul(con_o.w , hexp(power)));
+			if (__hlt(alpha , __float2half(1.0f / 255.0f)))
 				continue;
-			float test_T = T * (1 - alpha);
-			if (test_T < 0.0001f)
+			__half test_T = __hmul(T , __hsub(__int2half_rn(1) , alpha));
+			if (__hlt(test_T , __float2half(0.0001f)))
 			{
 				done = true;
 				continue;
@@ -352,7 +380,7 @@ renderCUDA(
 
 			// Eq. (3) from 3D Gaussian splatting paper.
 			for (int ch = 0; ch < CHANNELS; ch++)
-				C[ch] += features[collected_id[j] * CHANNELS + ch] * alpha * T;
+				C[ch] = __hadd(C[ch] , __hmul(features[collected_id[j] * CHANNELS + ch] , __hmul(alpha , T)));
 
 			T = test_T;
 
@@ -369,7 +397,7 @@ renderCUDA(
 		final_T[pix_id] = T;
 		n_contrib[pix_id] = last_contributor;
 		for (int ch = 0; ch < CHANNELS; ch++)
-			out_color[ch * H * W + pix_id] = C[ch] + T * bg_color[ch];
+			out_color[ch * H * W + pix_id] = __hadd(C[ch] , __hmul(T , bg_color[ch]));
 	}
 }
 
@@ -378,13 +406,13 @@ void FORWARD::render(
 	const uint2* ranges,
 	const uint32_t* point_list,
 	int W, int H,
-	const float2* means2D,
-	const float* colors,
-	const float4* conic_opacity,
-	float* final_T,
+	const __half2* means2D,
+	const __half* colors,
+	const __half4* conic_opacity,
+	__half* final_T,
 	uint32_t* n_contrib,
-	const float* bg_color,
-	float* out_color)
+	const __half* bg_color,
+	__half* out_color)
 {
 	renderCUDA<NUM_CHANNELS> << <grid, block >> > (
 		ranges,
@@ -400,31 +428,32 @@ void FORWARD::render(
 }
 
 void FORWARD::preprocess(int P, int D, int M,
-	const float* means3D,
-	const glm::vec3* scales,
+	const __half* means3D,
+	const __half3* scales,
 	const float scale_modifier,
-	const glm::vec4* rotations,
-	const float* opacities,
-	const float* shs,
+	const __half4* rotations,
+	const __half* opacities,
+	const __half* shs,
 	bool* clamped,
-	const float* cov3D_precomp,
-	const float* colors_precomp,
-	const float* viewmatrix,
-	const float* projmatrix,
-	const glm::vec3* cam_pos,
+	const __half* cov3D_precomp,
+	const __half* colors_precomp,
+	const __half* viewmatrix,
+	const __half* projmatrix,
+	const __half3* cam_pos,
 	const int W, int H,
 	const float focal_x, float focal_y,
 	const float tan_fovx, float tan_fovy,
 	int* radii,
-	float2* means2D,
-	float* depths,
-	float* cov3Ds,
-	float* rgb,
-	float4* conic_opacity,
+	__half2* means2D,
+	__half* depths,
+	__half* cov3Ds,
+	__half* rgb,
+	__half4* conic_opacity,
 	const dim3 grid,
 	uint32_t* tiles_touched,
 	bool prefiltered)
 {
+	std::cout << "Preprocessing...\n\n\n" << std::endl;
 	preprocessCUDA<NUM_CHANNELS> << <(P + 255) / 256, 256 >> > (
 		P, D, M,
 		means3D,

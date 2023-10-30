@@ -34,25 +34,25 @@ std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {
 
 std::tuple<int, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 RasterizeGaussiansCUDA(
-	const torch::Tensor& background,
-	const torch::Tensor& means3D,
-    const torch::Tensor& colors,
-    const torch::Tensor& opacity,
-	const torch::Tensor& scales,
-	const torch::Tensor& rotations,
-	const float scale_modifier,
-	const torch::Tensor& cov3D_precomp,
-	const torch::Tensor& viewmatrix,
-	const torch::Tensor& projmatrix,
-	const float tan_fovx, 
-	const float tan_fovy,
-    const int image_height,
-    const int image_width,
-	const torch::Tensor& sh,
-	const int degree,
-	const torch::Tensor& campos,
-	const bool prefiltered,
-	const bool debug)
+	const torch::Tensor& background = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& means3D = torch::empty({0}, torch::kHalf),
+    const torch::Tensor& colors = torch::empty({0}, torch::kHalf),
+    const torch::Tensor& opacity = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& scales = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& rotations = torch::empty({0}, torch::kHalf),
+	const float scale_modifier = 0.0,
+	const torch::Tensor& cov3D_precomp = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& viewmatrix = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& projmatrix = torch::empty({0}, torch::kHalf),
+	const float tan_fovx = 0.0, 
+	const float tan_fovy = 0.0,
+    const int image_height = 0,
+    const int image_width = 0,
+	const torch::Tensor& sh = torch::empty({0}, torch::kHalf),
+	const int degree = 0,
+	const torch::Tensor& campos = torch::empty({0}, torch::kHalf),
+	const bool prefiltered = false,
+	const bool debug = false)
 {
   if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
     AT_ERROR("means3D must have dimensions (num_points, 3)");
@@ -63,7 +63,7 @@ RasterizeGaussiansCUDA(
   const int W = image_width;
 
   auto int_opts = means3D.options().dtype(torch::kInt32);
-  auto float_opts = means3D.options().dtype(torch::kFloat32);
+  auto float_opts = means3D.options().dtype(torch::kHalf);
 
   torch::Tensor out_color = torch::full({NUM_CHANNELS, H, W}, 0.0, float_opts);
   torch::Tensor radii = torch::full({P}, 0, means3D.options().dtype(torch::kInt32));
@@ -91,23 +91,23 @@ RasterizeGaussiansCUDA(
 		binningFunc,
 		imgFunc,
 	    P, degree, M,
-		background.contiguous().data<float>(),
+		background.contiguous().data<__half>(),
 		W, H,
-		means3D.contiguous().data<float>(),
-		sh.contiguous().data_ptr<float>(),
-		colors.contiguous().data<float>(), 
-		opacity.contiguous().data<float>(), 
-		scales.contiguous().data_ptr<float>(),
+		means3D.contiguous().data<__half>(),
+		sh.contiguous().data_ptr<__half>(),
+		colors.contiguous().data<__half>(), 
+		opacity.contiguous().data<__half>(), 
+		scales.contiguous().data_ptr<__half>(),
 		scale_modifier,
-		rotations.contiguous().data_ptr<float>(),
-		cov3D_precomp.contiguous().data<float>(), 
-		viewmatrix.contiguous().data<float>(), 
-		projmatrix.contiguous().data<float>(),
-		campos.contiguous().data<float>(),
+		rotations.contiguous().data_ptr<__half>(),
+		cov3D_precomp.contiguous().data<__half>(), 
+		viewmatrix.contiguous().data<__half>(), 
+		projmatrix.contiguous().data<__half>(),
+		campos.contiguous().data<__half>(),
 		tan_fovx,
 		tan_fovy,
 		prefiltered,
-		out_color.contiguous().data<float>(),
+		out_color.contiguous().data<__half>(),
 		radii.contiguous().data<int>(),
 		debug);
   }
@@ -116,27 +116,27 @@ RasterizeGaussiansCUDA(
 
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
  RasterizeGaussiansBackwardCUDA(
- 	const torch::Tensor& background,
-	const torch::Tensor& means3D,
-	const torch::Tensor& radii,
-    const torch::Tensor& colors,
-	const torch::Tensor& scales,
-	const torch::Tensor& rotations,
-	const float scale_modifier,
-	const torch::Tensor& cov3D_precomp,
-	const torch::Tensor& viewmatrix,
-    const torch::Tensor& projmatrix,
-	const float tan_fovx,
-	const float tan_fovy,
-    const torch::Tensor& dL_dout_color,
-	const torch::Tensor& sh,
-	const int degree,
-	const torch::Tensor& campos,
-	const torch::Tensor& geomBuffer,
-	const int R,
-	const torch::Tensor& binningBuffer,
-	const torch::Tensor& imageBuffer,
-	const bool debug) 
+ 	const torch::Tensor& background = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& means3D = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& radii = torch::empty({0}, torch::kHalf),
+    const torch::Tensor& colors = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& scales = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& rotations = torch::empty({0}, torch::kHalf),
+	const float scale_modifier = 0.0f,
+	const torch::Tensor& cov3D_precomp = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& viewmatrix = torch::empty({0}, torch::kHalf),
+    const torch::Tensor& projmatrix = torch::empty({0}, torch::kHalf),
+	const float tan_fovx = 0.0f,
+	const float tan_fovy = 0.0f,
+    const torch::Tensor& dL_dout_color = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& sh = torch::empty({0}, torch::kHalf),
+	const int degree =0,
+	const torch::Tensor& campos = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& geomBuffer = torch::empty({0}, torch::kHalf),
+	const int R = 0,
+	const torch::Tensor& binningBuffer = torch::empty({0}, torch::kHalf),
+	const torch::Tensor& imageBuffer = torch::empty({0}, torch::kHalf),
+	const bool debug=false) 
 {
   const int P = means3D.size(0);
   const int H = dL_dout_color.size(1);
@@ -161,34 +161,34 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
   if(P != 0)
   {  
 	  CudaRasterizer::Rasterizer::backward(P, degree, M, R,
-	  background.contiguous().data<float>(),
+	  background.contiguous().data<__half>(),
 	  W, H, 
-	  means3D.contiguous().data<float>(),
-	  sh.contiguous().data<float>(),
-	  colors.contiguous().data<float>(),
-	  scales.data_ptr<float>(),
+	  means3D.contiguous().data<__half>(),		//
+	  sh.contiguous().data<__half>(),
+	  colors.contiguous().data<__half>(),
+	  scales.data_ptr<__half>(),
 	  scale_modifier,
-	  rotations.data_ptr<float>(),
-	  cov3D_precomp.contiguous().data<float>(),
-	  viewmatrix.contiguous().data<float>(),
-	  projmatrix.contiguous().data<float>(),
-	  campos.contiguous().data<float>(),
+	  rotations.data_ptr<__half>(),
+	  cov3D_precomp.contiguous().data<__half>(),
+	  viewmatrix.contiguous().data<__half>(),		//
+	  projmatrix.contiguous().data<__half>(),
+	  campos.contiguous().data<__half>(),
 	  tan_fovx,
 	  tan_fovy,
 	  radii.contiguous().data<int>(),
 	  reinterpret_cast<char*>(geomBuffer.contiguous().data_ptr()),
 	  reinterpret_cast<char*>(binningBuffer.contiguous().data_ptr()),
 	  reinterpret_cast<char*>(imageBuffer.contiguous().data_ptr()),
-	  dL_dout_color.contiguous().data<float>(),
-	  dL_dmeans2D.contiguous().data<float>(),
-	  dL_dconic.contiguous().data<float>(),  
-	  dL_dopacity.contiguous().data<float>(),
-	  dL_dcolors.contiguous().data<float>(),
-	  dL_dmeans3D.contiguous().data<float>(),
-	  dL_dcov3D.contiguous().data<float>(),
-	  dL_dsh.contiguous().data<float>(),
-	  dL_dscales.contiguous().data<float>(),
-	  dL_drotations.contiguous().data<float>(),
+	  dL_dout_color.contiguous().data<__half>(),
+	  dL_dmeans2D.contiguous().data<__half>(),
+	  dL_dconic.contiguous().data<__half>(),  
+	  dL_dopacity.contiguous().data<__half>(),
+	  dL_dcolors.contiguous().data<__half>(),
+	  dL_dmeans3D.contiguous().data<__half>(),
+	  dL_dcov3D.contiguous().data<__half>(),
+	  dL_dsh.contiguous().data<__half>(),
+	  dL_dscales.contiguous().data<__half>(),
+	  dL_drotations.contiguous().data<__half>(),
 	  debug);
   }
 
@@ -207,9 +207,9 @@ torch::Tensor markVisible(
   if(P != 0)
   {
 	CudaRasterizer::Rasterizer::markVisible(P,
-		means3D.contiguous().data<float>(),
-		viewmatrix.contiguous().data<float>(),
-		projmatrix.contiguous().data<float>(),
+		means3D.contiguous().data<__half>(),
+		viewmatrix.contiguous().data<__half>(),
+		projmatrix.contiguous().data<__half>(),
 		present.contiguous().data<bool>());
   }
   

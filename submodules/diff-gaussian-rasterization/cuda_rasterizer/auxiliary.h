@@ -14,6 +14,7 @@
 
 #include "config.h"
 #include "stdio.h"
+#include "cuda_fp16.h"
 
 #define BLOCK_SIZE (BLOCK_X * BLOCK_Y)
 #define NUM_WARPS (BLOCK_SIZE/32)
@@ -38,6 +39,22 @@ __device__ const float SH_C3[] = {
 	-0.5900435899266435f
 };
 
+struct __align__(8) __half3
+{
+    __half x, y, z;
+	__forceinline__ __device__ float3 convert() const { return { __half2float(x), __half2float(y), __half2float(z) }; }
+};
+struct  __align__(8) __half4
+{
+    __half x, y, z, w;
+	__forceinline__ __device__ float4 convert() const { return { __half2float(x), __half2float(y), __half2float(z), __half2float(w) }; }
+}; 
+__forceinline__ __device__ __half3 __float32half3(const float3& f) { return { __float2half(f.x), __float2half(f.y), __float2half(f.z) }; }
+__forceinline__ __device__ __half4 __float42half4(const float4& f) { return { __float2half(f.x), __float2half(f.y), __float2half(f.z), __float2half(f.w) }; }
+__forceinline__ __device__ __half2 __float22half2(const float2& f) { return { __float2half(f.x), __float2half(f.y) }; }
+
+typedef  struct __half3 __half3;
+typedef  struct __half4 __half4;
 __forceinline__ __device__ float ndc2Pix(float v, int S)
 {
 	return ((v + 1.0) * S - 1.0) * 0.5;
@@ -55,23 +72,23 @@ __forceinline__ __device__ void getRect(const float2 p, int max_radius, uint2& r
 	};
 }
 
-__forceinline__ __device__ float3 transformPoint4x3(const float3& p, const float* matrix)
+__forceinline__ __device__ float3 transformPoint4x3(const __half3& p, const __half* matrix)
 {
 	float3 transformed = {
-		matrix[0] * p.x + matrix[4] * p.y + matrix[8] * p.z + matrix[12],
-		matrix[1] * p.x + matrix[5] * p.y + matrix[9] * p.z + matrix[13],
-		matrix[2] * p.x + matrix[6] * p.y + matrix[10] * p.z + matrix[14],
+		__half2float(__hadd(__hadd(__hmul(matrix[0] , p.x) , __hmul(matrix[4] , p.y)) , __hadd(__hmul(matrix[8] , p.z) , matrix[12]))),
+		__half2float(__hadd(__hadd(__hmul(matrix[1] , p.x) , __hmul(matrix[5] , p.y)) , __hadd(__hmul(matrix[9] , p.z) , matrix[13]))),
+		__half2float(__hadd(__hadd(__hmul(matrix[2] , p.x) , __hmul(matrix[6] , p.y)) , __hadd(__hmul(matrix[10] , p.z) , matrix[14])))
 	};
 	return transformed;
 }
 
-__forceinline__ __device__ float4 transformPoint4x4(const float3& p, const float* matrix)
+__forceinline__ __device__ float4 transformPoint4x4(const __half3& p, const __half* matrix)
 {
 	float4 transformed = {
-		matrix[0] * p.x + matrix[4] * p.y + matrix[8] * p.z + matrix[12],
-		matrix[1] * p.x + matrix[5] * p.y + matrix[9] * p.z + matrix[13],
-		matrix[2] * p.x + matrix[6] * p.y + matrix[10] * p.z + matrix[14],
-		matrix[3] * p.x + matrix[7] * p.y + matrix[11] * p.z + matrix[15]
+		__half2float(__hadd(__hadd(__hmul(matrix[0] , p.x) , __hmul(matrix[4] , p.y)) , __hadd(__hmul(matrix[8] , p.z) , matrix[12]))),
+		__half2float(__hadd(__hadd(__hmul(matrix[1] , p.x) , __hmul(matrix[5] , p.y)) , __hadd(__hmul(matrix[9] , p.z) , matrix[13]))),
+		__half2float(__hadd(__hadd(__hmul(matrix[2] , p.x) , __hmul(matrix[6] , p.y)) , __hadd(__hmul(matrix[10] , p.z) , matrix[14]))),
+		__half2float(__hadd(__hadd(__hmul(matrix[3] , p.x) , __hmul(matrix[7] , p.y)) , __hadd(__hmul(matrix[11] , p.z) , matrix[15])))
 	};
 	return transformed;
 }
@@ -86,12 +103,12 @@ __forceinline__ __device__ float3 transformVec4x3(const float3& p, const float* 
 	return transformed;
 }
 
-__forceinline__ __device__ float3 transformVec4x3Transpose(const float3& p, const float* matrix)
+__forceinline__ __device__ float3 transformVec4x3Transpose(const float3& p, const __half* matrix)
 {
 	float3 transformed = {
-		matrix[0] * p.x + matrix[1] * p.y + matrix[2] * p.z,
-		matrix[4] * p.x + matrix[5] * p.y + matrix[6] * p.z,
-		matrix[8] * p.x + matrix[9] * p.y + matrix[10] * p.z,
+		__half2float(matrix[0]) * p.x + __half2float(matrix[1]) * p.y + __half2float(matrix[2]) * p.z,
+		__half2float(matrix[4]) * p.x + __half2float(matrix[5]) * p.y + __half2float(matrix[6]) * p.z,
+		__half2float(matrix[8]) * p.x + __half2float(matrix[9]) * p.y + __half2float(matrix[10]) * p.z,
 	};
 	return transformed;
 }
@@ -137,13 +154,13 @@ __forceinline__ __device__ float sigmoid(float x)
 }
 
 __forceinline__ __device__ bool in_frustum(int idx,
-	const float* orig_points,
-	const float* viewmatrix,
-	const float* projmatrix,
+	const __half* orig_points,
+	const __half* viewmatrix,
+	const __half* projmatrix,
 	bool prefiltered,
 	float3& p_view)
 {
-	float3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
+	__half3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
 
 	// Bring points to screen space
 	float4 p_hom = transformPoint4x4(p_orig, projmatrix);
