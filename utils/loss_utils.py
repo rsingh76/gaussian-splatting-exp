@@ -40,7 +40,11 @@ def ssim(img1, img2, window_size=11, size_average=True):
 
     return _ssim(img1, img2, window, window_size, channel, size_average)
 
-def _ssim(img1, img2, window, window_size, channel, size_average=True):
+def _ssim(img1_h, img2_h, window, window_size, channel, size_average=True):
+    img1 = img1_h.float()
+    img2 = img2_h.float()
+    window = window.float()
+    # print the type of img1 and img2
     mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
     mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
 

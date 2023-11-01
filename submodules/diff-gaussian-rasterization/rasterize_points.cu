@@ -23,7 +23,8 @@
 #include <fstream>
 #include <string>
 #include <functional>
-
+#include <vector>
+static int count = 0;
 std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {
     auto lambda = [&t](size_t N) {
         t.resize_({(long long)N});
@@ -91,26 +92,36 @@ RasterizeGaussiansCUDA(
 		binningFunc,
 		imgFunc,
 	    P, degree, M,
-		background.contiguous().data<__half>(),
+		(__half*)background.contiguous().data_ptr(),
 		W, H,
-		means3D.contiguous().data<__half>(),
-		sh.contiguous().data_ptr<__half>(),
-		colors.contiguous().data<__half>(), 
-		opacity.contiguous().data<__half>(), 
-		scales.contiguous().data_ptr<__half>(),
+		(__half*)means3D.contiguous().data_ptr(),
+		(__half*)sh.contiguous().data_ptr(),
+		(__half*)colors.contiguous().data_ptr(), 
+		(__half*)opacity.contiguous().data_ptr(), 
+		(__half*)scales.contiguous().data_ptr(),
 		scale_modifier,
-		rotations.contiguous().data_ptr<__half>(),
-		cov3D_precomp.contiguous().data<__half>(), 
-		viewmatrix.contiguous().data<__half>(), 
-		projmatrix.contiguous().data<__half>(),
-		campos.contiguous().data<__half>(),
+		(__half*)rotations.contiguous().data_ptr(),
+		(__half*)cov3D_precomp.contiguous().data_ptr(), 
+		(__half*)viewmatrix.contiguous().data_ptr(), 
+		(__half*)projmatrix.contiguous().data_ptr(),
+		(__half*)campos.contiguous().data_ptr(),
 		tan_fovx,
 		tan_fovy,
 		prefiltered,
-		out_color.contiguous().data<__half>(),
-		radii.contiguous().data<int>(),
+		(__half*)out_color.contiguous().data_ptr(),
+		radii.contiguous().data_ptr<int>(),
 		debug);
   }
+	// // print the vector
+	// if(count > 1400){
+	// 	std::cout << "radii: ";
+	// 	for (int i = 0; i < radii.sizes()[0]; i++) {
+	// 		std::cout << radii.index({i}).item<int>() << " ";
+	// 	}
+	// 	std::cout << std::endl;
+	// }
+	// count++;
+
   return std::make_tuple(rendered, out_color, radii, geomBuffer, binningBuffer, imgBuffer);
 }
 
@@ -161,34 +172,34 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Te
   if(P != 0)
   {  
 	  CudaRasterizer::Rasterizer::backward(P, degree, M, R,
-	  background.contiguous().data<__half>(),
+	  (__half*)background.contiguous().data_ptr(),
 	  W, H, 
-	  means3D.contiguous().data<__half>(),		//
-	  sh.contiguous().data<__half>(),
-	  colors.contiguous().data<__half>(),
-	  scales.data_ptr<__half>(),
+	  (__half*)means3D.contiguous().data_ptr(),		//
+	  (__half*)sh.contiguous().data_ptr(),
+	  (__half*)colors.contiguous().data_ptr(),
+	  (__half*)scales.data_ptr(),
 	  scale_modifier,
-	  rotations.data_ptr<__half>(),
-	  cov3D_precomp.contiguous().data<__half>(),
-	  viewmatrix.contiguous().data<__half>(),		//
-	  projmatrix.contiguous().data<__half>(),
-	  campos.contiguous().data<__half>(),
+	  (__half*)rotations.data_ptr(),
+	  (__half*)cov3D_precomp.contiguous().data_ptr(),
+	  (__half*)viewmatrix.contiguous().data_ptr(),		//
+	  (__half*)projmatrix.contiguous().data_ptr(),
+	  (__half*)campos.contiguous().data_ptr(),
 	  tan_fovx,
 	  tan_fovy,
 	  radii.contiguous().data<int>(),
 	  reinterpret_cast<char*>(geomBuffer.contiguous().data_ptr()),
 	  reinterpret_cast<char*>(binningBuffer.contiguous().data_ptr()),
 	  reinterpret_cast<char*>(imageBuffer.contiguous().data_ptr()),
-	  dL_dout_color.contiguous().data<__half>(),
-	  dL_dmeans2D.contiguous().data<__half>(),
-	  dL_dconic.contiguous().data<__half>(),  
-	  dL_dopacity.contiguous().data<__half>(),
-	  dL_dcolors.contiguous().data<__half>(),
-	  dL_dmeans3D.contiguous().data<__half>(),
-	  dL_dcov3D.contiguous().data<__half>(),
-	  dL_dsh.contiguous().data<__half>(),
-	  dL_dscales.contiguous().data<__half>(),
-	  dL_drotations.contiguous().data<__half>(),
+	  (__half*)dL_dout_color.contiguous().data_ptr(),
+	  (__half*)dL_dmeans2D.contiguous().data_ptr(),
+	  (__half*)dL_dconic.contiguous().data_ptr(),  
+	  (__half*)dL_dopacity.contiguous().data_ptr(),
+	  (__half*)dL_dcolors.contiguous().data_ptr(),
+	  (__half*)dL_dmeans3D.contiguous().data_ptr(),
+	  (__half*)dL_dcov3D.contiguous().data_ptr(),
+	  (__half*)dL_dsh.contiguous().data_ptr(),
+	  (__half*)dL_dscales.contiguous().data_ptr(),
+	  (__half*)dL_drotations.contiguous().data_ptr(),
 	  debug);
   }
 
@@ -207,9 +218,9 @@ torch::Tensor markVisible(
   if(P != 0)
   {
 	CudaRasterizer::Rasterizer::markVisible(P,
-		means3D.contiguous().data<__half>(),
-		viewmatrix.contiguous().data<__half>(),
-		projmatrix.contiguous().data<__half>(),
+		(__half*)means3D.contiguous().data_ptr(),
+		(__half*)viewmatrix.contiguous().data_ptr(),
+		(__half*)projmatrix.contiguous().data_ptr(),
 		present.contiguous().data<bool>());
   }
   
